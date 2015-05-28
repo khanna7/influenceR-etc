@@ -8,7 +8,7 @@ In one intervention, the goal is to efficiently disseminate prevention informati
 
 In order to support this work, RCC is coding up algorithms in the literature to find significant nodes in a social network. These nodes can be targeted for interventions as specified above. Many of these algorithms scale poorly to large datasets, so parallelization is needed to leverage RCC’s Midway infrastructure. In addition to algorithmic software development, sample visualizations have been developed in order to help researchers at CCHE evaluated the results of their research.
 
-## Node signifcance algorithms
+## Node significance algorithms
 
 Algorithms have been implemented in C, R, or Python depending on the computational demands of the relevant method. We will
 ultimately package all these methods into an R package for distribution on CRAN. The methods along with their current status
@@ -22,4 +22,4 @@ are detailed below.
 
 **Eigencentrality**: This measure uses spectral graph methods. An eigenvector decomposition of the graph's adjacency matrix is performed. Node *i*'s eigencentrality score corresponds to index *i* in the largest eigenvector. Both Python and R have wrappers around ARPACK sparse eigendecomposition functions (in the Scipy and igraph packages, respectively).
 
-**Burt's Effective Network Size and Burt's Network Contraint**: These related graph metrics were developed by Ronald Burt at the Booth School of Business. Effective Network Size measures the degree to which a node’s neighborhood is smaller if it has redundant links; Network Constraint measures how much a given node constrains a different node by connecting it to other parts of the network. After some algebraic manipulation, both of these metrics reduce to simple linear algebra which was coded in Python, then R.
+**Burt's Effective Network Size and Burt's Network Contraint**: These related graph metrics were developed by Ronald Burt at the Booth School of Business. Effective Network Size measures the degree to which a node’s neighborhood is smaller if it has redundant links; Network Constraint measures how much a given node constrains a different node by connecting it to other parts of the network. After some algebraic manipulation, both of these metrics reduce to linear algebra which was coded in Python, then R.
