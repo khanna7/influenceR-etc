@@ -32,15 +32,35 @@ ens <- function(g) {
   ens <- deg - (qsum/deg)
 }
 
-main = function(args) {
-  func <- args[[1]]
+
+constraint <- function(g) {
+  A <- get.adjacency(g)
+  n <- dim(A)[1]
+  deg <- rowSums(A)
+
+  constraint_i <- function(i) {
+    jq <- A * A[,i]
+    jqd <- jq * deg
+    jqd[,i] <- 0
+  
+    jqd@x <- 1/jqd@x  # In place reciprocal. This is poor coding IMO because we're relying
+                      # on the implementation of dgCMatrix, but it makes the code 20X faster.
+                      # Alternative: jqd[jqd==0] <- Inf; jqd <- 1/jqd
+    Sj <- colSums(jqd)
+  
+    Cj <- Sj/deg[i] + (1/deg[i])
+    Cj2 <- Cj * Cj
+    sum(Cj2)
+  }
+  
+  sapply(1:n, constraint_i)
+}
+
+main <- function(args) {
+  
   graph <- dimacs.to.graph(args[[2]])
-  
-  #load('pruned-fb-networks.RData')
-  #network <- as.network(.GlobalEnv[[args[[2]]]])
-  
-  
-  centrality <- c(eigen=eigencentrality, betweenness=btwnness, ens=ens)
+  func <- args[[1]]
+  centrality <- c(eigen=eigencentrality, betweenness=btwnness, ens=ens, constraint=constraint)
   
   x <- centrality[[func]](graph)
   
