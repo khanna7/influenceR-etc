@@ -2,6 +2,7 @@
 
 library(igraph)
 library(Matrix)
+library(Rcpp)
 
 # igraph package has arpack functions
 # evcent - eigenvector centrality
@@ -32,20 +33,19 @@ ens <- function(g) {
   ens <- deg - (qsum/deg)
 }
 
-
 constraint <- function(g) {
-  A <- get.adjacency(g)
+  
+  A <- get.adjacency(g, sparse=T)
   n <- dim(A)[1]
   deg <- rowSums(A)
 
   constraint_i <- function(i) {
-    jq <- A * A[,i]
-    jqd <- jq * deg
-    jqd[,i] <- 0
-  
-    jqd@x <- 1/jqd@x  # In place reciprocal. This is poor coding IMO because we're relying
-                      # on the implementation of dgCMatrix, but it makes the code 20X faster.
-                      # Alternative: jqd[jqd==0] <- Inf; jqd <- 1/jqd
+    
+    #jqd <- (A * A[i,]) * deg
+    #jqd[,i] <- 0
+    #jqd@x <- 1/jqd@x  # In place reciprocal. Alternative: jqd[jqd==0] <- Inf; jqd <- 1/jqd
+    
+    jqd <- process_sparse(A, A[i,], deg)       
     Sj <- colSums(jqd)
   
     Cj <- Sj/deg[i] + (1/deg[i])
@@ -54,6 +54,26 @@ constraint <- function(g) {
   }
   
   sapply(1:n, constraint_i)
+}
+
+cppFunction('NumericVector c_process_sparse(IntegerVector I, IntegerVector J, NumericVector X, NumericVector Ai, NumericVector deg) {
+  int n = X.size();
+  NumericVector out(n);
+
+  for(int p = 0; p < n; p++) {
+    int j = J[p];
+    out[p] = X[p] * Ai[j] * deg[j];
+    out[p] = (out[p] == 0 ? 0 : 1/out[p]);
+  }
+  
+  return out;
+}')
+
+process_sparse <- function(A, Ai, deg) {
+  M <- as(A, 'TsparseMatrix')
+  x <- c_process_sparse(M@i, M@j, M@x, Ai, deg)
+  M@x <- x
+  M
 }
 
 main <- function(args) {
