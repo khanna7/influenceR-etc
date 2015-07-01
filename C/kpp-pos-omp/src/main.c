@@ -21,7 +21,7 @@ void print_s(int *s, int n);
 void regen(int *gen, int *s, int *t, int n, int k);   
 
 
-/* single core version: compute btter solutions for T seconds */
+/* single core version: compute better solutions for T seconds */
 void driver(graph_t *g, int n, int k, double p, double tol, long maxsec)
 {
 	
