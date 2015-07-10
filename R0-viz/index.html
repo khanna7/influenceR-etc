@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.link {
+  stroke: #999;
+  stroke-opacity: .6;
+}
+
+.legend {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.controls {
+  position: absolute;
+  top: 2%;
+  left: 2%;
+}
+
+.axis path {
+    display: none;
+}
+
+.axis line {
+    stroke: #000;
+}
+
+
+
+</style>
+<body>
+  <div class="controls">
+  <input type="checkbox" id="kp_check"></input>Key Players <br>
+  <input type="checkbox" id="btwn_check"></input>Betweenness <br>
+  <input type="checkbox" id="bridge_check"></input>Bridging <br>
+  
+  </div>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+
+var width = window.innerWidth;
+    height = window.innerHeight;
+    //console.log()
+
+function makeColors() {
+  
+  var dokp = d3.select("#kp_check").node().checked;
+  var dobtwn = d3.select("#btwn_check").node().checked;
+  var dobridge = d3.select("#bridge_check").node().checked;
+  
+  var color = function(d) {
+    if (dokp && dobtwn && dobridge && d.kp && d.btwn && d.bridge)
+      return "brown";
+    if (dokp && dobtwn && d.kp && d.btwn)
+      return "green";
+    if (dokp && dobridge && d.kp && d.bridge)
+      return "purple";
+    if (dobtwn && dobridge && d.btwn && d.bridge)
+      return "orange";
+    if (dokp && d.kp)
+      return "blue";
+    if (dobtwn && d.btwn)
+      return "yellow";
+    if (dobridge && d.bridge)
+      return "red";
+    return "grey";
+  }
+  return color;
+}
+
+var force = d3.layout.force()
+    .charge(-120)
+    .gravity(0.3)
+    .linkDistance(30)
+    .size([width, height]);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+
+// from process_Data.R: There are 302 FB respondents, but 291 of those have ties to other respondents
+
+d3.json("graph.json", function(graph) {
+  var nodesByName = {}
+  graph.nodes.forEach(function(d) { nodesByName[d.name] = d })
+  graph.edges.forEach(function(d) {
+    d.source = nodesByName[d.source]
+    d.target = nodesByName[d.target]
+  })
+
+  force
+      .nodes(graph.nodes)
+      .links(graph.edges)
+      .start();
+
+  var link = svg.selectAll(".link")
+      .data(graph.edges)
+    .enter().append("line")
+      .attr("class", "link")
+      .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+  var node = svg.selectAll(".node")
+      .data(graph.nodes)
+    .enter().append("circle")
+      .attr("class", "node")
+      .attr("r", 5)
+      .style("fill", "grey")
+      .call(force.drag);
+
+  node.append("title")
+      .text(function(d) { return d.name; });
+
+  force.on("tick", function() {
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+  });
+  
+  d3.selectAll("input").on("click", function() {
+    var color = makeColors();
+    node.transition().style("fill", color);
+  });
+});
+
+</script>
