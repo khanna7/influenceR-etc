@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+#content {
+    width: 100%;
+    height: 100%;
+    position:absolute;
+}
+
+
+.header {
+  position: absolute;
+  margin: 5%;
+  font: 18px sans-serif;
+  border: dashed;
+  padding: 1%;
+}
+
+</style>
+<body>
+
+<div id="content"></div>
+
+<div class="header">
+<div>PrEP Aware</div><br>
+</div>
+  
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="graphCanvas.js"></script>
+<script>
+
+/* legend */
+var legend = d3.select(".header")
+var points = d3.entries({"Yes": "#1f77b4", "No": "#ff7f0e", "No report": "#2ca02c"})
+points.forEach(function(d) {
+  var p = legend.append("div")
+  p.append("svg")
+    .attr({width: 18, height:18})
+    .append("rect")
+    .attr({width:"100%", height:"100%"})
+    .style("fill", d.value)
+  p.append("span").text("     " + d.key)
+})
+
+
+var color = d3.scale.category20();
+
+var graph = graphCanvas()
+
+d3.csv("ego.csv", function(error, csv) {
+  var data = parseGraph(csv)
+  graph
+     .nodes(data.nodes)
+     .edges(data.edges)
+     .labels(true)
+  
+  d3.select("#content").call(graph);
+  var force = graph.force()
+  
+  force.on("tick", function(e) {
+    var k = 6 * e.alpha;
+    data.edges.forEach(function(d, i) {
+      d.source.y -= k;
+      d.target.y += k;
+    });
+  })
+  
+  graph.start()
+  
+  
+  d3.csv("prepknow_data.csv", function(error, rows) {
+  
+    var colorById = {},
+    color = d3.scale.category10()
+  
+    rows.forEach(function(row) {
+      colorById[row["V1"]] = row["V2"]
+    })
+    
+    data.nodes.forEach(function(d) {
+      var c = colorById[d.name]
+      d.color = c ? color(c) : "#2ca02c";
+    })
+  
+  });
+  
+})
+
+function parseGraph(edges) {
+  var nodesById = []
+  var nodes = []
+  
+  function idToNode(id) {
+    if (nodesById[id])
+      return nodesById[id]
+    var node = {"name": id, "size": 20}
+    nodes.push(node)
+    nodesById[id] = node;
+    return node
+  }
+  
+  edges.forEach(function(d) {
+    var src = idToNode(d.source)
+    var tar = idToNode(d.target)
+    tar.size = 10;
+    //src.children.push(tar)
+    //tar.parent = src
+    d.source = src
+    d.target = tar 
+  })
+  
+  return {nodes: nodes, edges: edges}
+}
+
+</script>
