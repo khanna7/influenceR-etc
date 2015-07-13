@@ -56,21 +56,16 @@
     </div>
   </div>
 <script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="graphCanvas.js"></script>
 <script>
 
 var width = window.innerWidth;
     height = window.innerHeight;
-
-var force = d3.layout.force()
-    .charge(-120)
-    .gravity(0.3)
-    .linkDistance(30)
-    .size([width, height]);
-
-var svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height);
-
+    
+var frame = d3.select("body").append('div')
+    .style("width", width+"px")
+    .style("height", height+"px");    
+    
 var colors = {}
 
 // from process_Data.R: There are 302 FB respondents, but 291 of those have ties to other respondents
@@ -88,8 +83,6 @@ d3.json("graph_new.json", function(graph) {
       d.bridge = 0
   })
 
-  console.log(nodes)
-
   colors["kp"] = makeLegend(nodes, "kp", d3.select("#kpbox"), "yellow");
   colors["btwn"] = makeLegend(nodes, "btwn", d3.select("#btwnbox"), "red")
   colors["bridge"] = makeLegend(nodes, "bridge", d3.select("#bridgebox"), "blue");
@@ -97,44 +90,35 @@ d3.json("graph_new.json", function(graph) {
   colors["constraint"] = makeLegend(nodes, "constraint", d3.select("#constraintbox"), "purple");
   colors["ens"] = makeLegend(nodes, "ens", d3.select("#ensbox"), "orange");
   
-  force
+  for (d of nodes) {
+    d.size = 5;
+    d.color = "grey";
+  }
+  
+  var force = d3.layout.force()
+    .charge(-120)
+    .gravity(0.3)
+    .linkDistance(30)
+    .size([width, height]);
+  
+  
+  var plot = graphCanvas()
       .nodes(nodes)
-      .links(links)
-      .start();
+      .edges(links)
+      .force(force)
+  
+  plot(frame)
+  
+  plot.start()
 
-  var link = svg.selectAll(".link")
-      .data(links)
-    .enter().append("line")
-      .attr("class", "link")
-      .style("stroke-width", function(d) { return Math.sqrt(d.value); });
-
-  var node = svg.selectAll(".node")
-      .data(nodes)
-    .enter().append("circle")
-      .attr("class", "node")
-      .attr("r", 5)
-      .style("fill", "grey")
-      .call(force.drag);
-
-  node.append("title")
-      .text(function(d) { return d.name; });
-
-  force.on("tick", function() {
-    link.attr("x1", function(d) { return d.source.x; })
-        .attr("y1", function(d) { return d.source.y; })
-        .attr("x2", function(d) { return d.target.x; })
-        .attr("y2", function(d) { return d.target.y; });
-
-    node.attr("cx", function(d) { return d.x; })
-        .attr("cy", function(d) { return d.y; });
-  });
-
-    
+  
   /* change colorby */
   d3.selectAll('input[name="colorby"]')
     .on("change", function() {
       var thing = d3.event.target.value
-      node.transition().style("fill", function(d) { return colors[thing](d[thing])})
+      //node.transition().style("fill", function(d) { return colors[thing](d[thing])})
+      for (d of nodes)
+        d.color = colors[thing](d[thing])
     })
 });
 
@@ -153,7 +137,7 @@ function makeLegend(nodes, thing, home, topcol) {
     //.attr("width", lw+2*padding)
   
   legend.append("linearGradient")
-      .attr({"id":"grad", "x1": "0%", "y1": "0%", "x2":"100%", "y2":"0%"})
+      .attr({"id":"grad_"+thing, "x1": "0%", "y1": "0%", "x2":"100%", "y2":"0%"})
       .selectAll("stop")
     .data(extent).enter()
       .append("stop")
@@ -166,7 +150,7 @@ function makeLegend(nodes, thing, home, topcol) {
     .attr("width", lw)
     .attr("height", lh)
     .attr("x", padding)
-    .style("fill", "url(#grad)")
+    .style("fill", "url(#grad_"+thing+")")
 
   var lscale = d3.scale.linear()
     .domain(extent)
