@@ -13,15 +13,13 @@ constraint_naive <- function(g, i) {
     c
 }
 
-
-
 mycon <- function(g, i) {
   A <- get.adjacency(g, sparse=F)
   deg <- degree(g)
   
-  jq <- t(t(A*A[,i])*A[,i])
+  jq <- t(A*A[,i]) * A[,i]
   
-  jqd <-t(t(jq) * deg)
+  jqd <- jq * deg
   
   jqd[jqd==0] <- Inf
   
@@ -29,7 +27,7 @@ mycon <- function(g, i) {
   
   v <- jqdr * (1/deg[i])
   
-  w <- rowSums(v)
+  w <- colSums(v)
   
   idx <- neighbors(g, i)
   w[idx] <- w[idx] + (1/deg[i])
