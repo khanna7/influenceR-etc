@@ -45,12 +45,20 @@ constraint <- function(g) {
     #jqd[,i] <- 0
     #jqd@x <- 1/jqd@x  # In place reciprocal. Alternative: jqd[jqd==0] <- Inf; jqd <- 1/jqd
     
-    jqd <- process_sparse(A, A[i,], deg)       
+    # process sparse does this: jq <- drop0(t(A*A[,i]) * A[,i]); jqd <- drop0(jq * deg)
+    jqd <- process_sparse(A, A[i,], deg)
+    
+    #jqd <- drop0(jq * deg)
+    jqd <- drop0(jqd)
+    jqd@x <- (1/jqd@x) * (1/deg[i])
+         
     Sj <- colSums(jqd)
   
-    Cj <- Sj/deg[i] + (1/deg[i])
-    Cj2 <- Cj * Cj
-    sum(Cj2)
+    idx <- as.numeric(neighbors(g, i))
+    Sj[idx] <- Sj[idx] + (1/deg[i])
+    
+    Sj2 <- Sj * Sj
+    sum(Sj2)
   }
   
   sapply(1:n, constraint_i)
@@ -62,8 +70,10 @@ cppFunction('NumericVector c_process_sparse(IntegerVector I, IntegerVector J, Nu
 
   for(int p = 0; p < n; p++) {
     int j = J[p];
-    out[p] = X[p] * Ai[j] * deg[j];
-    out[p] = (out[p] == 0 ? 0 : 1/out[p]);
+    int i = I[p];
+    out[p] = ((X[p] * Ai[j]) * Ai[i]) * deg[j];
+    //out[p] = X[p] * Ai[j] * Ai[i] * deg[j];
+    //out[p] = (out[p] == 0 ? 0 : 1/out[p]);
   }
   
   return out;
