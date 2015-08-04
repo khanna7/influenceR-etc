@@ -3,7 +3,6 @@
 import sys
 from scipy.sparse import csr_matrix, vstack
 import numpy as np
-import pandas as pd
 
 # Convert a DIMACS file to a Compressed-Sparse-Row Matrix
 def csv_to_csr(gf, delim=',', st=0, skip=1):
