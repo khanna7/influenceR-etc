@@ -3,24 +3,29 @@
 import sys
 from scipy.sparse import csr_matrix, vstack
 import numpy as np
+import pandas as pd
 
 # Convert a DIMACS file to a Compressed-Sparse-Row Matrix
-def dimacs_to_csr(gf):
-    tok = gf.next().strip().split(' ')
-    n = int(tok[2])
-    m = int(tok[3])
+def csv_to_csr(gf, delim=',', st=0, skip=1):
+    for i in range(skip):
+        gf.next() # skip first line
 
-    #print "nodes: %d, edges %d" % (n, m)
+    name_to_index = {}
+    def add_name(name):
+        try:
+            return name_to_index[name]
+        except:
+            name_to_index[name] = len(name_to_index)
+            return name_to_index[name]
 
     I = []
     J = []
     V = []
 
     for line in gf:
-        tok = line.strip().split(' ')[1:3]
-        u, v = [int(x) for x in tok]
-        u -= 1
-        v -= 1
+        tok = line.strip().split(delim)
+        u = add_name(tok[st])
+        v = add_name(tok[st+1])
 
         I.append(u)
         J.append(v)
@@ -30,8 +35,12 @@ def dimacs_to_csr(gf):
         J.append(u)
         V.append(1.0)
     
-    return csr_matrix((V, (I, J)), shape=(n, n))
+    n = max(max(I), max(J)) + 1
 
+    return name_to_index, csr_matrix((V, (I, J)), shape=(n, n))
+
+    
+    
 # Find the eigenvector corresponding to the largest eigenvalue. Make sure it's positive.
 def eff_net_size(A):
     S = A.dot(A.T) # index (i,j) = # of neighbors shared by i and j
@@ -189,10 +198,10 @@ def main():
         exit(1)
     
     f = open(sys.argv[2])
-    A = dimacs_to_csr(f)
+    names, A = csv_to_csr(f)
     x = func(A)
-    for i in x:
-        print i
+    for name,i in names.items():
+        print name + "," + str(x[i])
         
 if __name__ == "__main__":
     main()
