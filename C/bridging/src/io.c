@@ -25,7 +25,7 @@ long name_to_index(char *name_p, char **rev, long *hash_len_p) {
     
     this = malloc(sizeof(struct item));
     this->name = strdup(name_p);
-    this->id = hash_len;
+    this->id = hash_len+1;
     
     rev[hash_len] = this->name;
  
@@ -125,16 +125,16 @@ int read_graph_from_edgelist(graph_t *G, int *EL, long n, long m) {
       u = EL[2*i];
       v = EL[2*i+1];
       
-      if ((u < 0) || (u > n) || (v < 0) || (v > n)) {
+      if ((u <= 0) || (u > n) || (v <= 0) || (v > n)) {
           fprintf(stderr, "Error reading edge # %d (%d, %d) in the input file. "
                   " Please check the input graph file.\n", count+1, u, v);
           return 1;
       }
-      /* Difference with influenceR: nodes in edgelist start from 0 */
-      src[count] = u;
-      dest[count] = v;
-      degree[u]++;
-      degree[v]++;
+
+      src[count] = u-1;
+      dest[count] = v-1;
+      degree[u-1]++;
+      degree[v-1]++;
       int_weight[count] = int_wt;
       
       count++;
