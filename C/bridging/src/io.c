@@ -1,8 +1,11 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <search.h>
+#include <stdlib.h>
+#include <graph_defs.h>
 
 long name_to_index(char *name, char **rev, int m) {
-  static int hash_len = 0;
+  static long hash_len = 0;
   
   ENTRY e, *ep;
   
@@ -26,6 +29,17 @@ long name_to_index(char *name, char **rev, int m) {
   return (long) ep->data;
 }
 
+int get_lines(FILE *f) {
+
+  int c, m = 0;
+  while (EOF != (c=getchar()))
+    if (c=='\n')
+      ++m;
+
+  rewind(f);
+
+  return m;
+}
 
 /* Read a CSV and interpret it as an edgelist. The first two columns will be
  * interpreted as sources' and targets' names. The array of char*s at rev will
@@ -34,9 +48,12 @@ long name_to_index(char *name, char **rev, int m) {
  * allocated by the function and not freed. The values at *n and *m will be
  * updated to reflect the number of nodes and vertices in the file.
  */
-int *read_edgelist_from_file(FILE *f, long n, long m, char **rev) {
-  
+int *read_edgelist_from_file(FILE *f, long *nNodes, long m, char **rev) {
+
+  long n=0;
+
   int i = 0;
+  int *EL = (int *) malloc(m * sizeof(int));
 
   while(!feof(f)) {
     
@@ -66,10 +83,13 @@ int *read_edgelist_from_file(FILE *f, long n, long m, char **rev) {
     fprintf(stderr, "Wrong number of lines in file!\n");
     exit(1);
   }
+  *nNodes = n;
+  //*nEdges = m;
+
   return EL;
 }
 
-int read_graph_from_edgelist(graph_t* G, int *EL, long n, long m) {
+int read_graph_from_edgelist(graph_t *G, int *EL, long n, long m) {
 
     long i;
     long count, offset;
