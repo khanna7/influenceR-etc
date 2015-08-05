@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include <mpi.h>
+#include <io.h>
 
 /* Bridging is described here:
  * http://www.ncbi.nlm.nih.gov/pmc/articles/PMC2889704/
@@ -21,6 +22,9 @@ int main(int argc, char *argv[])
   int size, rank;
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  
+  int *read_edgelist_from_file(FILE *f, int *EL, char **rev, long m);
+  int read_graph_from_edgelist(graph_t* G, int *EL, long n, long m);
   
   int n; /* number of nodes */
   graph_t *G = read_graph_from_file(argv[1], &n);
