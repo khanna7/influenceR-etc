@@ -33,8 +33,10 @@ int main(int argc, char *argv[])
   long n, m = get_lines(f);
   char **names = (char **) malloc(m * sizeof(char *));
   int *EL = read_edgelist_from_file(f, &n, m, names);
+  printf("%d\n", n);
   graph_t *G = malloc(sizeof(graph_t));
-  read_graph_from_edgelist(G, EL,n, m);
+  read_graph_from_edgelist(G, EL, n, m);
+  m = G->m;
   
   double *scores = (double *) malloc(n * sizeof(double));
 #ifdef USE_MPI

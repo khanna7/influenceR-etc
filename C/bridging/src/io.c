@@ -1,44 +1,53 @@
 #define _GNU_SOURCE
 #include <stdio.h>
-#include <search.h>
 #include <stdlib.h>
 #include <graph_defs.h>
+#include "uthash.h"
 
-long name_to_index(char *name, char **rev, int m) {
-  static long hash_len = 0;
+struct item {
+  char *name;
+  long id;
+  UT_hash_handle hh;
+};
+
+
+long name_to_index(char *name_p, char **rev, long *hash_len_p) {
   
-  ENTRY e, *ep;
+  static struct item *ht = NULL;
   
-  if (hash_len == 0) {
-    hcreate(m); // overestimate
-  }
-  e.key = name;
-  ep = hsearch(e, FIND);
+  long hash_len = *hash_len_p;
   
-  if (ep == NULL) {
-    e.data = (void *) hash_len;
-    ep = hsearch(e, ENTER);
-    rev[hash_len] = name;
-    if (ep == NULL) {
-      fprintf(stderr, "Error inserting into hashtable!\n");
-      exit(1);
-    }
+  struct item *this;
+  
+  HASH_FIND_STR (ht, name_p, this);
+  
+  if (this == NULL) {
+    
+    this = malloc(sizeof(struct item));
+    this->name = strdup(name_p);
+    this->id = hash_len;
+    
+    rev[hash_len] = this->name;
+ 
+    HASH_ADD_STR (ht, name, this);
+    
     hash_len++;
+    *hash_len_p = hash_len;
   }
 
-  return (long) ep->data;
+  return this->id;
 }
 
 int get_lines(FILE *f) {
 
   int c, m = 0;
-  while (EOF != (c=getchar()))
+  while (EOF != (c=fgetc(f)))
     if (c=='\n')
       ++m;
 
   rewind(f);
 
-  return m;
+  return m-1; // skip first line!
 }
 
 /* Read a CSV and interpret it as an edgelist. The first two columns will be
@@ -52,27 +61,26 @@ int *read_edgelist_from_file(FILE *f, long *nNodes, long m, char **rev) {
 
   long n=0;
 
-  int i = 0;
-  int *EL = (int *) malloc(m * sizeof(int));
+  int i = 0, j;
+  int *EL = (int *) malloc(2 * m * sizeof(int));
 
+  /* skip first line */
+  while (EOF != (j=fgetc(f)) && j!='\n');
+
+  char buf[1024];
   while(!feof(f)) {
     
-    /* get source */
-    char *src = NULL;
-    getdelim(&src, 0, ',', f);
-    int u = name_to_index(src, rev, m);
+    fgets(buf, 1024, f);
     
-    /* get target */
-    char *tar = NULL;
-    getdelim(&tar, 0, ',', f);
-    int v = name_to_index(tar, rev, m);
+    char *src_p = strtok(buf, ",");
+    char *tar_p = strtok(NULL, ",\n \t");
+    if(src_p == NULL || tar_p == NULL)
+      break;
+
+    int u = name_to_index(src_p, rev, &n);
+    int v = name_to_index(tar_p, rev, &n);
     
-    /* advance file pointer */
-    char *trash = NULL;
-    getline(&trash, 0, f);
-    if (trash)
-      free(trash);
-    
+    assert((i*2+1) < (2*m));
     EL[i*2] = u;
     EL[i*2+1] = v;
     
@@ -80,7 +88,7 @@ int *read_edgelist_from_file(FILE *f, long *nNodes, long m, char **rev) {
   }
   
   if (i != m) {
-    fprintf(stderr, "Wrong number of lines in file!\n");
+    fprintf(stderr, "Wrong number of lines in file! Expected %d, actual %d\n", m, i);
     exit(1);
   }
   *nNodes = n;
@@ -117,18 +125,20 @@ int read_graph_from_edgelist(graph_t *G, int *EL, long n, long m) {
       u = EL[2*i];
       v = EL[2*i+1];
       
-      if ((u <= 0) || (u > n) || (v <= 0) || (v > n)) {
-          fprintf(stderr, "Error reading edge # %d (%d, %d) in the input file."
+      if ((u < 0) || (u > n) || (v < 0) || (v > n)) {
+          fprintf(stderr, "Error reading edge # %d (%d, %d) in the input file. "
                   " Please check the input graph file.\n", count+1, u, v);
           return 1;
       }
-      src[count] = u-1;
-      dest[count] = v-1;
-      degree[u-1]++;
-      degree[v-1]++;
+      /* Difference with influenceR: nodes in edgelist start from 0 */
+      src[count] = u;
+      dest[count] = v;
+      degree[u]++;
+      degree[v]++;
       int_weight[count] = int_wt;
       
       count++;
+  
     }
 
     if (count != m) {
