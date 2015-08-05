@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <R.h>
-#include <Rinternals.h>
 
 #include <graph_defs.h>
 #include <graph_gen.h>
@@ -26,7 +24,7 @@ double *bridging(graph_t *G, int *edgelist, double *scores)
   
 	/* 1) compute closeness by edge in file */
 	
-  double *closeness_by_edge = (double *) R_alloc(m, sizeof(double));
+  double *closeness_by_edge = (double *) malloc(m * sizeof(double));
   
   for (int i = 0; i < m/2; i++) {
   
@@ -81,8 +79,8 @@ double *bridging_MPI(graph_t *G, int *edgelist, double *scores)
   fprintf(stderr, "%d range: %d-%d\n", rank, start, end); 
 #endif
   
-  double *buf = (double *) R_alloc(bufsize, sizeof(double));
-  int *edgeidx = (int *) R_alloc(bufsize, sizeof(int));
+  double *buf = (double *) malloc(bufsize * sizeof(double));
+  int *edgeidx = (int *) malloc(bufsize * sizeof(int));
   
   assert(buf);
   assert(edgeidx);
@@ -119,15 +117,15 @@ double *bridging_MPI(graph_t *G, int *edgelist, double *scores)
   double *closeness_buf = NULL;
   int *edge_indices = NULL;
   if (rank == 0) {
-    closeness_buf = (double *) R_alloc(bufsize*size, sizeof(double));
-    edge_indices = (int *) R_alloc(bufsize*size, sizeof(int));
+    closeness_buf = (double *) malloc(bufsize*size * sizeof(double));
+    edge_indices = (int *) malloc(bufsize*size * sizeof(int));
   }
   MPI_Barrier(MPI_COMM_WORLD);
   
   MPI_Gather(buf, bufsize, MPI_DOUBLE, closeness_buf, bufsize, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Gather(edgeidx, bufsize, MPI_INT, edge_indices, bufsize, MPI_INT, 0, MPI_COMM_WORLD);
   
-  double *closeness_by_edge = (double *) R_alloc(m, sizeof(double));
+  double *closeness_by_edge = (double *) malloc(m * sizeof(double));
   /* Fill REAL closeness_by_edge matrix */
     
   if (rank == 0) {
@@ -138,14 +136,14 @@ double *bridging_MPI(graph_t *G, int *edgelist, double *scores)
 #endif
     }
     
-    //free(closeness_buf);
-    //free(edge_indices);
+    free(closeness_buf);
+    free(edge_indices);
   }
   
   MPI_Barrier(MPI_COMM_WORLD);
   MPI_Bcast(closeness_by_edge, m, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  //free(buf);
-  //free(edgeidx);
+  free(buf);
+  free(edgeidx);
 	
 
 	/* 2) compute bridging score by NODE. Parallization here may be more trouble than it's worth. But we already have the resources. */
@@ -155,7 +153,7 @@ double *bridging_MPI(graph_t *G, int *edgelist, double *scores)
   
 	double cls = closeness(G, -1, -1); // normal closeness (use all edges)
 
-  buf = (double *) R_alloc(delta, sizeof(double));
+  buf = (double *) malloc(delta * sizeof(double));
 
 	for (int v = start; v < end; v++) 
 		buf[v-start] = bridging_vertex_precomp(G, v, cls, closeness_by_edge);
@@ -196,11 +194,11 @@ double closeness(graph_t *G, long ignore_edge0, long ignore_edge1)
 {
 	int n = G->n;
 	
-	double *distance = (double *) R_alloc(sizeof(double), n);
-  assert(distance);
-  if (distance == NULL) {
-    fprintf(stderr, "RAN OUT OF MEM\n");
-  }
+	double *distance = (double *) malloc(sizeof(double) * n);
+    assert(distance);
+    if (distance == NULL) {
+      fprintf(stderr, "RAN OUT OF MEM\n");
+    }
   
 	double sum = 0;
 	
@@ -216,7 +214,7 @@ double closeness(graph_t *G, long ignore_edge0, long ignore_edge1)
 		}
 	}
 
-	//free(distance);
+	free(distance);
 	return sum / (n*n - n);
 }
 
