@@ -29,11 +29,14 @@ int main(int argc, char *argv[])
 #endif  
 
   FILE *f = fopen(argv[1], "r");
+  if(f == NULL) {
+    fprintf(stderr, "Invalid file.\n");
+    exit(1);
+  }
 
   long n, m = get_lines(f);
   char **names = (char **) malloc(m * sizeof(char *));
-  int *EL = read_edgelist_from_file(f, &n, m, names);
-  printf("%d\n", n);
+  long *EL = read_edgelist_from_file(f, &n, m, names);
   graph_t *G = malloc(sizeof(graph_t));
   read_graph_from_edgelist(G, EL, n, m);
   m = G->m;
@@ -50,7 +53,7 @@ int main(int argc, char *argv[])
   if (rank == 0) {
 #endif
 	for (int i = 0; i < n; i++)
-	  printf("%g\n", scores[i]);
+	  printf("%s,%g\n", names[i], scores[i]);
 #ifdef USE_MPI
    }
 #endif

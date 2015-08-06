@@ -13,7 +13,7 @@ double closeness(graph_t *G, long ignore_edge0, long ignore_edge1);
 long BFS_parallel_frontier_expansion_bridging(graph_t* G, long src, long diameter, double *distance, long ignore_edge0, long ignore_edge1 );
 
 
-double *bridging(graph_t *G, int *edgelist, double *scores)
+double *bridging(graph_t *G, long *edgelist, double *scores)
 {  
   
  	int n = G->n; /* number of nodes */
@@ -53,7 +53,7 @@ double *bridging(graph_t *G, int *edgelist, double *scores)
 }
 
 #ifdef USE_MPI
-double *bridging_MPI(graph_t *G, int *edgelist, double *scores)
+double *bridging_MPI(graph_t *G, long *edgelist, double *scores)
 {  
   
   // Get the number of processes
@@ -195,10 +195,6 @@ double closeness(graph_t *G, long ignore_edge0, long ignore_edge1)
 	int n = G->n;
 	
 	double *distance = (double *) malloc(sizeof(double) * n);
-    assert(distance);
-    if (distance == NULL) {
-      fprintf(stderr, "RAN OUT OF MEM\n");
-    }
   
 	double sum = 0;
 	

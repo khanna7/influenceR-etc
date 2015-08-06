@@ -2,40 +2,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <graph_defs.h>
-#include "uthash.h"
-
-struct item {
-  char *name;
-  long id;
-  UT_hash_handle hh;
-};
+#include <search.h>
 
 
 long name_to_index(char *name_p, char **rev, long *hash_len_p) {
   
-  static struct item *ht = NULL;
-  
   long hash_len = *hash_len_p;
-  
-  struct item *this;
-  
-  HASH_FIND_STR (ht, name_p, this);
-  
-  if (this == NULL) {
+
+  ENTRY e, *ep;
+
+  e.key = name_p;
+  ep = hsearch(e, FIND);
+
+  if (ep == NULL) {
+    char *name = strdup(name_p);
+    e.key = name;
+    e.data = (void *) hash_len;
+    ep = hsearch(e, ENTER);
     
-    this = malloc(sizeof(struct item));
-    this->name = strdup(name_p);
-    this->id = hash_len+1;
-    
-    rev[hash_len] = this->name;
- 
-    HASH_ADD_STR (ht, name, this);
-    
+    rev[hash_len] = name;
+
     hash_len++;
     *hash_len_p = hash_len;
   }
 
-  return this->id;
+  return (long) ep->data;
 }
 
 int get_lines(FILE *f) {
@@ -57,17 +48,20 @@ int get_lines(FILE *f) {
  * allocated by the function and not freed. The values at *n and *m will be
  * updated to reflect the number of nodes and vertices in the file.
  */
-int *read_edgelist_from_file(FILE *f, long *nNodes, long m, char **rev) {
+long *read_edgelist_from_file(FILE *f, long *nNodes, long m, char **rev) {
 
   long n=0;
 
   int i = 0, j;
-  int *EL = (int *) malloc(2 * m * sizeof(int));
+  long *EL = (long *) malloc(2 * m * sizeof(long));
 
   /* skip first line */
   while (EOF != (j=fgetc(f)) && j!='\n');
 
   char buf[1024];
+
+  hcreate(m); // create hash table for name_to_index
+
   while(!feof(f)) {
     
     fgets(buf, 1024, f);
@@ -77,16 +71,18 @@ int *read_edgelist_from_file(FILE *f, long *nNodes, long m, char **rev) {
     if(src_p == NULL || tar_p == NULL)
       break;
 
-    int u = name_to_index(src_p, rev, &n);
-    int v = name_to_index(tar_p, rev, &n);
-    
+    long u = name_to_index(src_p, rev, &n);
+    long v = name_to_index(tar_p, rev, &n);
+   
     assert((i*2+1) < (2*m));
-    EL[i*2] = u;
-    EL[i*2+1] = v;
+    EL[i*2] = u + 1;
+    EL[i*2+1] = v + 1;
     
     i++;
   }
   
+  hdestroy();
+
   if (i != m) {
     fprintf(stderr, "Wrong number of lines in file! Expected %d, actual %d\n", m, i);
     exit(1);
@@ -97,7 +93,7 @@ int *read_edgelist_from_file(FILE *f, long *nNodes, long m, char **rev) {
   return EL;
 }
 
-int read_graph_from_edgelist(graph_t *G, int *EL, long n, long m) {
+int read_graph_from_edgelist(graph_t *G, long *EL, long n, long m) {
 
     long i;
     long count, offset;
