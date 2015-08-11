@@ -62,7 +62,7 @@ double *bridging_MPI(graph_t *G, long *edgelist, double *scores)
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   #ifdef VERBOSE
-  fprintf(stderr, "hello from main_brdiging, process %d\n", rank);
+  fprintf(stderr, "hello from process %d\n", rank);
   #endif
   
  	int n = G->n; /* number of nodes */
@@ -90,6 +90,12 @@ double *bridging_MPI(graph_t *G, long *edgelist, double *scores)
   
   
   for (int ii = start; ii < end; ii++) {
+    
+#ifdef VERBOSE
+    if (ii % 100 == 0)
+        fprintf(stderr, "%d on edge %d\n", rank, ii);
+#endif    
+
     u = edgelist[ii*2] - 1;
     v = edgelist[ii*2+1] - 1;
     
@@ -127,17 +133,20 @@ double *bridging_MPI(graph_t *G, long *edgelist, double *scores)
   
   double *closeness_by_edge = (double *) malloc(m * sizeof(double));
   /* Fill REAL closeness_by_edge matrix */
-    
+   
   if (rank == 0) {
+#ifdef VERBOSE
+    fprintf(stderr, "Rank 0 merging closeness_by_edge\n");
+#endif
     for (int i = 0; i < m; i++) {
   	  closeness_by_edge[edge_indices[i]] = closeness_buf[i];
-#ifdef VERBOSE
-      printf("CBE %d %g\n", edge_indices[i], closeness_buf[i]); 
-#endif
     }
     
     free(closeness_buf);
     free(edge_indices);
+#ifdef VERBOSE
+    fprintf(stderr, "Rank 0 done with closeness_by_edge\n");
+#endif
   }
   
   MPI_Barrier(MPI_COMM_WORLD);
@@ -150,14 +159,22 @@ double *bridging_MPI(graph_t *G, long *edgelist, double *scores)
   delta = ceil(((double)n) / size);
   start = rank * delta, end = start + delta;
   end = end > n ? n : end;
-  
+
+#ifdef VERBOSE
+  fprintf(stderr, "Rank %d computing for vertices %d-%d\n", rank, start, end);
+#endif
+      
 	double cls = closeness(G, -1, -1); // normal closeness (use all edges)
 
   buf = (double *) malloc(delta * sizeof(double));
 
 	for (int v = start; v < end; v++) 
 		buf[v-start] = bridging_vertex_precomp(G, v, cls, closeness_by_edge);
-	
+
+#ifdef VERBOSE
+  fprintf(stderr, "Rank %d done computing vertices\n", rank);
+#endif
+
   MPI_Gather(buf, delta, MPI_DOUBLE, scores, delta, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   
   
