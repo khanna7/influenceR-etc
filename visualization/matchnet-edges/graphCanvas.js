@@ -87,13 +87,13 @@ function graphCanvas() {
             else
               context.setLineDash([]);
             
-            drawArrow(context, 
-              s * d.source.x + t[0], s * d.source.y + t[1], 
-              s * d.target.x + t[0], s * d.target.y + t[1], 
-              d.arrow ? undefined : function() { }, 
-              d.direction,
-              undefined,
-              10);
+            var sx = d.source.x, sy = d.source.y,
+              tx = d.target.x, ty = d.target.y;
+             
+            context.beginPath();
+            context.moveTo( s * sx + t[0], s * sy + t[1]);
+            context.lineTo( s * tx + t[0], s * ty + t[1]);
+            context.stroke();
             
         });
         //context.stroke()
