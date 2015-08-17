@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.dot {
+  fill: steelblue;
+  opacity: 0.3;
+  stroke-width: 2;
+}
+
+.dot.selected {
+  stroke: red;
+}
+
+.link {
+   stroke: #999;
+   fill: none;
+}
+
+#linePlot {
+  width: 800px;
+  height: 400px;
+}
+#graphPlot {
+  width: 960px;
+  height: 700px;
+}
+
+
+</style>
+<body>
+  <svg id="plot" width="960" height="700">
+  </svg>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+<script src="util.js"></script>
+<script>
+d3.csv("matchnet.csv", function(links) { 
+  /* specific to this */
+  for (d of links) {
+    d.source = d["UniqueID1"]
+    d.target = d["ParentUniqueID1"] // these guys are egos
+  }
+  
+  var nodes = nodesFromLinks(links)
+  
+  var plot = linePlot()
+    .nodes(nodes)
+    .links(links)
+  d3.select("#plot").call(plot)
+  
+  var graph = forceTree()
+  
+  var dots = d3.selectAll(".dot")
+  
+  var gplot = d3.select("#plot").append("g")
+    .attr({width: 960, height: 700})
+  
+  dots
+    .on("click", function(d) {
+      
+      dots.classed("selected", false)
+      d3.select(this).classed("selected", true)
+      
+      graph.graph(d.graph)
+      
+      graph(gplot);
+      
+    })
+});
+
+function linePlot() {
+
+// adapted from http://bl.ocks.org/mbostock/3883245
+  var nodes, links;
+  
+  function plot(svg) {
+    var width = parseInt(svg.attr("width")), height = parseInt(svg.attr("height"))
+
+    var margin = {top: 20, right: 20, bottom: 30, left: 50},
+        width = width - margin.left - margin.right,
+        height = height - margin.top - margin.bottom;
+
+
+    var x = d3.scale.linear()
+        .range([0, width]);
+
+    var y = d3.scale.linear()
+        .range([height, 0]);
+
+    var xAxis = d3.svg.axis()
+        .scale(x)
+        .orient("bottom")
+        //.tickFormat(d3.format(",d"))
+
+    var yAxis = d3.svg.axis()
+        .scale(y)
+        .orient("left");
+
+    var svg = svg
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    function len(d) { return d.nodes.length }
+    
+    var components = getComponents(nodes, links)
+    for (g of components) {
+      g.density = (2*g.links.length) / (g.nodes.length*(g.nodes.length-1))
+    }
+
+    var componentsBySize = d3.nest() // density!
+      .key(len)
+      .map(components)
+    
+    var componentSets = d3.entries(componentsBySize)
+
+    for (d of componentSets) {
+      var smnodes = d.value.reduce(function(acc, x) { return acc.concat(x.nodes)}, [])
+      var smnodes_set = d3.map(smnodes, function(d) { return d.name })
+      var smlinks = links.filter(function(l) { return smnodes_set.has(l.source.name)})
+     
+      d.graph = {nodes: smnodes, links: smlinks}
+      d.size = +d.key
+      d.total = d.graph.nodes.length
+    }
+    
+    var xdom = d3.extent(componentSets, function(d) { return +d.size })
+    var ydom = d3.extent(componentSets, function(d) { return d.value.length })
+    x.domain(xdom);
+    y.domain(ydom);
+
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis)
+       .append("text")
+        .style("text-anchor", "end")
+        .attr("x", width-10)
+        .attr("dy", -10)
+        .text("Size of component")
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .text("Number of components");
+
+
+    var d = d3.extent(componentSets, function(d) { return d.total });
+  
+    var radius = d3.scale.linear()
+        .domain(d3.extent(componentSets, function(d) { return d.total }))
+        .range([4,15])
+        
+    svg.append("g")
+      .selectAll(".dot")
+      .data(componentSets)
+     .enter().append("circle")
+      .attr("class", "dot")
+      .attr("cx", function(d) { return x(d.size) })
+      .attr("cy", function(d) { return y(d.value.length) })
+      .attr("r", function(d) { return radius(d.total) })
+          
+  }
+  
+  plot.nodes = function(_) {
+    if(_) {
+      nodes = _
+      return plot
+    }
+    else return nodes
+  }
+  
+  plot.links = function(_) {
+    if(_) {
+      links = _
+      return plot
+    }
+    else return links
+  }
+  
+  return plot;
+}
+
+function forceTree() {
+  
+  var graph;
+  
+  function plot(svg) {
+    
+    svg.selectAll("*").remove()
+    
+    var w = parseInt(svg.attr("width")), 
+      h = parseInt(svg.attr("height")),
+      r = 6;
+    
+    var force = d3.layout.force()
+        .charge(-120)
+        .linkDistance(30)
+        .gravity(0.2)
+        .size([w, h]);
+
+  
+        
+    var link = svg.selectAll("line")
+          .data(graph.links)
+        .enter().append("path")
+        .attr("class", "link")
+
+    var color = d3.scale.linear()
+      .domain([0,1])
+      .range(["red", "blue"])
+        
+    var node = svg.selectAll("circle")
+        .data(graph.nodes)
+      .enter().append("svg:circle")
+        .attr("r", r - .75)
+        .style("fill", function(d) { return color(d.targetCount / (d.sourceCount + d.targetCount))})
+        .style("stroke", "black")
+        .call(force.drag);
+        
+    node.append("title")
+        .text(function(d) { return d.name })
+
+    force
+        .nodes(graph.nodes)
+        .links(graph.links)
+        .on("tick", tick)
+        .start();
+
+    function tick(e) {
+
+      // Push sources up and targets down to form a weak tree.
+      var k = 6 * e.alpha;
+     // graph.links.forEach(function(d, i) {
+      //  d.source.y += k;
+    //    d.target.y -= k;
+    //  });
+
+      node.attr("cx", function(d) { return d.x; })
+          .attr("cy", function(d) { return d.y; });
+
+      link
+       
+        .attr("d", function(d) {
+            var dx = d.target.x - d.source.x,
+                dy = d.target.y - d.source.y,
+                dr = 1/100; //75/d.linknum;
+            return "M" + d.source.x + "," + d.source.y + "A" + dr + "," + dr + " 0 0,1 " + d.target.x + "," + d.target.y;
+           // return "M" + d.source.x + "," + d.source.y + "S" + d.target.x + "," + d.target.y + " " + 2 + "," + 3;
+        });
+    }
+  }
+  
+  plot.graph = function(_) {
+    if(_) {
+      graph = _
+      return plot
+    }
+    else return graph
+  }
+ 
+ return plot 
+}
+
+</script>
