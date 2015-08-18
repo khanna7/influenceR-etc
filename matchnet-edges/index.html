@@ -6,20 +6,20 @@ body {
   font: 10px sans-serif;
 }
 
-#plot {
-  width: 1000px;
-  height: 1000px;
-}
-
 
 </style>
 <body>
-  <div id="plot" >
+  <div id="plot">
   </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script src="util.js"></script>
 <script src="graphCanvas.js"></script>
 <script>
+var width = window.innerWidth, height = window.innerHeight;
+d3.select("#plot")
+  .style({width: width+"px", height: height+"px"})
+
+
 d3.csv("matchnet.csv", function(csv_links) { 
   /* specific to this */
   var links = []
