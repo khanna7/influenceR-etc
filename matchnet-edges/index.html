@@ -6,6 +6,13 @@ body {
   font: 10px sans-serif;
 }
 
+#plot {
+  margin: auto;
+  position: absolute;
+  top: 0; bottom: 0; left: 0; right: 0;
+  border: solid grey 1px;
+}
+
 
 </style>
 <body>
@@ -15,7 +22,7 @@ body {
 <script src="util.js"></script>
 <script src="graphCanvas.js"></script>
 <script>
-var width = window.innerWidth, height = window.innerHeight;
+var width = 0.9*window.innerWidth, height = 0.9*window.innerHeight;
 d3.select("#plot")
   .style({width: width+"px", height: height+"px"})
 
