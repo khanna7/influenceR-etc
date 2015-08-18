@@ -12,14 +12,18 @@
   font: 10px sans-serif;
 }
 
+.child circle {
+  fill: red;
+}
+
 .recruiter {
   fill: none;
-  stroke: #ccc;
+  stroke: grey;
   stroke-width: 1.5px;
 }
 
 .root circle {
-  fill: #9467bd;
+  fill: darkred;
   stroke: black;
   stroke-width: 1.5px;
 }
@@ -86,16 +90,33 @@ d3.csv("matchnet_trim.csv", function(edges) {
       .attr("class", "node")
       .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; })  
 
+  function distance(d) {
+    if (d.children)
+      for (x of d.children) {
+        x.distance = d.distance + 1
+        distance(x)
+      }
+  }
+  nodes[0].distance = 0
+  distance(nodes[0])
+
+  var dom = d3.extent(nodes, function(d) { return d.distance })
+  var color = d3.scale.linear()
+      .domain(dom)
+      .range(["red", "white"])
+  
   node.append("circle")
-    .attr("r", 10);
-    
+    .attr("r", 10)
+    .style("fill", function(d) { return color(d.distance) })
+    .append("title")
+    .text(function(d) { return d.name})
     
   var nodesByName = {}
   for (d of nodes)
     nodesByName[d.name] = d
-    
-    
-  var nontree_nodes  = [], par_links = []
+  
+  var  par_edges = edges
+    .filter(function(d) { return nodesByName[d]})
   
   for (d of edges) {
     var id = d["UniqueID1"]
@@ -104,73 +125,49 @@ d3.csv("matchnet_trim.csv", function(edges) {
     if(id == parent)
       continue;
   
+    var tar = nodesByName[id], src = nodesByName[parent];
     
-    var tar = nodesByName[id]
-    if (!tar) {
+    if (!src || !tar)
       continue;
-      //tar = {name: id}
-      //nodesByName[id] = tar
-      //nontree_nodes.push(tar)
-    }
     
-    var src = nodesByName[parent]
-    if (!src) {
-      src = {name: parent, x: 0, y: 0}
-      nodesByName[parent] = src
-      nontree_nodes.push(src)
-    }
-    
-    par_links.push({source: src, target: tar})
+    if (!src.neighbors)
+      src.neighbors = [tar]
+    else
+      src.neighbors.push(tar)
+          
+    par_edges.push({source: src, target: tar})
   }
   
   
   var par = svg.selectAll(".parent")
-    .data(par_links)
+    .data(par_edges)
    .enter().append("path")
     .attr("class", "parent")
     .attr("d", diagonal)
   
-  var nontree = svg.selectAll("g.node.nontree")
-      .data(nontree_nodes)
-    .enter().append("g")
-      .classed({node: 1, nontree: 1})
-      .attr("transform", function(d) { return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; }) 
-  
+  // hack -
+  node.each(function(d) { d.circle = d3.select(this).select("circle") })
 
-  nontree.append("circle")
-    .attr("r", "50");
-  
-  
-  var nontree_map = d3.map(nontree_nodes, function(d) { return d.name })
+  node.on("mouseover", function(d) {
+    function enchild(d, r) {
+      d.circle.attr("r", Math.max(r, 10))
+      if(d.children)
+        for (x of d.children)
+          enchild(x, r/2)
+    }
+    enchild(d, 50)
     
-  var nontree_links = par_links.filter(function(d) { return nontree_map.get(d.source.name) || nontree_map.get(d.target.name) })
- 
- 
-  var force = d3.layout.force()
-    .charge(-120)
-    .linkDistance(30)
-    .size([diameter, diameter-150])
-    .nodes(nontree_nodes)
-    .links(nontree_links) 
-  
-  console.log(nontree_nodes)
-  //thunk() 
-  force.on("tick", function() {
-    nontree
-    .attr("transform", function(d) { console.log(d); thunk() ; return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")"; }) 
+    if (d.neighbors)
+      for (x of d.neighbors) {
+        x.circle.attr("r", 35)
+      }
     
-    par.attr("d", diagonal)
   })
   
-  force.start()
-    
-  
-  
-  
-  
-
- 
-  
+  node.on("mouseout", function() {
+    node.selectAll("circle")
+      .attr("r", 10)
+  })
 })
 
 
@@ -196,17 +193,17 @@ function graphHierarchy(edges) {
     tar.parent = src
   })
   
-  //var maxsz = 0;
-  //var maxtree;
+  var maxsz = 0;
+  var maxtree;
   var trees = []
   nodes.forEach(function(d) {
     if (!d.parent)
       trees.push(d)
-    /*d.size = calcSize(d);
+    d.size = calcSize(d);
     if (d.size > maxsz) {
       maxsz = d.size
       maxtree = d
-    }*/
+    }
   })
 
   function calcSize(tree) {
