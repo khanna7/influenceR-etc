@@ -35,20 +35,34 @@ body {
   height: 700px;
 }
 
+#controls {
+  float: left;
+  width: 20%;
+}
+
+#plot {
+  float: left;
+}
 
 </style>
 <body>
   <svg id="plot" width="960" height="700">
   </svg>
+  <div id="controls">
+  Color by <br>
+      <input type="radio" name="colorby" value="seed" checked>Seed<br>
+      <input type="radio" name="colorby" value="agecalc">Age<br>
+  </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script src="util.js"></script>
 <script>
-d3.csv("matchnet.csv", function(links) { 
+d3.csv("matched_data.csv", function(links) { 
   var nodes = nodesFromLinks(links)
-  
+
   var plot = linePlot()
     .nodes(nodes)
     .links(links)
+  
   d3.select("#plot").call(plot)
   
   var graph = forceTree()
@@ -67,7 +81,7 @@ d3.csv("matchnet.csv", function(links) {
       graph.graph(d.graph)
       
       graph(gplot);
-      
+     
     })
 });
 
@@ -205,23 +219,18 @@ function forceTree() {
         .linkDistance(30)
         .gravity(0.2)
         .size([w, h]);
-
-  
         
     var link = svg.selectAll("line")
           .data(graph.links)
         .enter().append("line")
         .attr("class", "link")
 
-    var color = d3.scale.linear()
-      .domain([0,1])
-      .range(["red", "blue"])
         
     var node = svg.selectAll("circle")
         .data(graph.nodes)
       .enter().append("svg:circle")
         .attr("r", r - .75)
-        .style("fill", function(d) { return color(d.targetCount / (d.sourceCount + d.targetCount))})
+        .attr("class", "node")
         .style("stroke", "black")
         .call(force.drag);
         
@@ -251,6 +260,17 @@ function forceTree() {
           .attr("x2", function(d) { return d.target.x; })
           .attr("y2", function(d) { return d.target.y; });
     }
+    
+    var schemes = makeColorSchemes(graph.nodes)
+    
+    var id = d3.select("input[name='colorby']:checked").node().value
+    node.transition().style("fill", schemes[id])
+    
+    d3.selectAll("input[name='colorby']")
+      .on("change", function() {
+        var id = d3.event.target.value
+        node.style("fill", schemes[id])
+      })
   }
   
   plot.graph = function(_) {
@@ -262,6 +282,25 @@ function forceTree() {
   }
  
  return plot 
+}
+
+function makeColorSchemes(nodes) {
+  var schemes = {}
+  
+  /* agecalc */
+  var ext = d3.extent(nodes.filter(function(d) { return d.agecalc }), function(d) { return +d.agecalc || 0 })
+  var color =  d3.scale.linear()
+    .domain(ext)
+    .range(["grey", "red"])
+  schemes.agecalc = function(d) { return d.agecalc ? color(+d.agecalc) : "white" }
+  
+  /* percent act as seed */
+  var seed_color = d3.scale.linear()
+    .domain([0,1])
+    .range(["red", "blue"])
+  schemes.seed = function(d) { return seed_color(d.targetCount / (d.sourceCount + d.targetCount))}
+  
+  return schemes
 }
 
 </script>
