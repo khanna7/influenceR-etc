@@ -81,4 +81,72 @@ function getComponentGraph(nodesl, links) {
   return {nodes:nodesl, links:links}
 }
 
+/* Adapted from respondents-only */
+function legend(array, attr, colorBounds, domain) {
+  var lw = 200, lh=20, padding=20;
+  
+  var color;
+  
+  var create = function(home) {
+    if (!domain)
+      domain = d3.extent(array, function(d) { return d[attr]})
+
+    color = d3.scale.linear()
+      .domain(domain)
+      .range(colorBounds)
+
+    var legend = home
+      .append("svg")
+      .attr("height", lh+padding)
+      //.attr("width", lw+2*padding)
+  
+    legend.append("linearGradient")
+        .attr({"id":"grad_"+attr, "x1": "0%", "y1": "0%", "x2":"100%", "y2":"0%"})
+        .selectAll("stop")
+      .data(domain).enter()
+        .append("stop")
+        .attr("offset", function(_, i) { return (i*100).toString()+"%" })
+        .style("stop-opacity", "1")
+        .style("stop-color", color)
+
+
+    legend.append("rect")
+      .attr("width", lw)
+      .attr("height", lh)
+      .attr("x", padding)
+      .style("fill", "url(#grad_"+attr+")")
+
+    var lscale = d3.scale.linear()
+      .domain(domain)
+      .range([0, lw]);
+
+    var format = d3.format("g")
+    var axis = d3.svg.axis()
+      .scale(lscale)
+      .ticks(4)
+      .tickFormat(format);
+
+    legend.append("g")
+      .attr("class", "axis")
+        .attr("transform", "translate(" + padding + "," + lh +")")
+        .call(axis);
+      
+    return create;
+  }
+  
+  
+  create.color = function(_) {
+    if (!_)
+      return color
+    else
+      color = _
+  }
+  
+  create.colorX = function(d) {
+    return (d[attr] != undefined) ? color(+d[attr]) : "white";
+  }
+
+  return create;
+  
+}
 
