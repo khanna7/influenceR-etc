@@ -50,12 +50,17 @@ body {
   </svg>
   <div id="controls">
   Color by <br>
-      <input type="radio" name="colorby" value="seed" checked>Seed<br>
-      <input type="radio" name="colorby" value="agecalc">Age<br>
+      <input type="radio" name="colorby" value="seed" checked />Percent of edges in which node acts as seed
+      <div id="seedlegend"></div>
+      <input type="radio" name="colorby" value="agecalc" />Age
+      <div id="agecalclegend"></div>
   </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
 <script src="util.js"></script>
 <script>
+
+var schemes;
+
 d3.csv("matched_data.csv", function(links) { 
   var nodes = nodesFromLinks(links)
 
@@ -83,6 +88,8 @@ d3.csv("matched_data.csv", function(links) {
       graph(gplot);
      
     })
+    
+  schemes = makeColorSchemes(nodes)
 });
 
 function linePlot() {
@@ -261,7 +268,7 @@ function forceTree() {
           .attr("y2", function(d) { return d.target.y; });
     }
     
-    var schemes = makeColorSchemes(graph.nodes)
+    //var schemes = makeColorSchemes(graph.nodes)
     
     var id = d3.select("input[name='colorby']:checked").node().value
     node.transition().style("fill", schemes[id])
@@ -288,17 +295,17 @@ function makeColorSchemes(nodes) {
   var schemes = {}
   
   /* agecalc */
-  var ext = d3.extent(nodes.filter(function(d) { return d.agecalc }), function(d) { return +d.agecalc || 0 })
-  var color =  d3.scale.linear()
-    .domain(ext)
-    .range(["grey", "red"])
-  schemes.agecalc = function(d) { return d.agecalc ? color(+d.agecalc) : "white" }
+  var ageLegend = legend(nodes, "agecalc", ["grey", "red"])
+  d3.select("#agecalclegend").call(ageLegend)
+  schemes.agecalc = ageLegend.colorX
   
   /* percent act as seed */
-  var seed_color = d3.scale.linear()
-    .domain([0,1])
-    .range(["red", "blue"])
-  schemes.seed = function(d) { return seed_color(d.targetCount / (d.sourceCount + d.targetCount))}
+  for (d of nodes) 
+    d.pseed = (d.targetCount) / (d.sourceCount + d.targetCount)
+  var seedLegend = legend(nodes, "pseed", ["red", "blue"], [0, 1])
+  d3.select("#seedlegend").call(seedLegend)
+  schemes.seed = seedLegend.colorX  
+  
   
   return schemes
 }
