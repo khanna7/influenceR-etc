@@ -19,6 +19,10 @@ function nodesFromLinks(links) {
   for (d of links) {
     d.source = makeNode(d.source)
     d.target = makeNode(d.target)
+    
+    if (d.agecalc && d.agecalc != "") {
+      d.source.agecalc = d.agecalc
+    }
   
     d.source.sourceCount = d.source.sourceCount + 1
     d.target.targetCount = d.target.targetCount + 1
@@ -26,6 +30,7 @@ function nodesFromLinks(links) {
     d.target.degree += 1
   
   }
+  
   return nodesById.values()
 }
 
