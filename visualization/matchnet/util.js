@@ -20,9 +20,12 @@ function nodesFromLinks(links) {
     d.source = makeNode(d.source)
     d.target = makeNode(d.target)
     
+    /* TODO: edge attributes ? */
     if (d.agecalc && d.agecalc != "") {
       d.source.agecalc = d.agecalc
     }
+    if (d.hivresult && d.hivresult != "")
+      d.source.hivresult = d.hivresult
   
     d.source.sourceCount = d.source.sourceCount + 1
     d.target.targetCount = d.target.targetCount + 1
